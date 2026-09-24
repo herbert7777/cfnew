@@ -3494,7 +3494,6 @@ function 处理打开值套接字(地址322, 端口321, 请求值320 = null) {
 async function 处理打开值套接字值(地址319, 端口318, 请求值317 = null) {
   try {
     const 套接字316 = 处理打开值套接字(地址319, 端口318, 请求值317);
-    if (套接字316?.opened) await 套接字316.opened;
     return 套接字316;
   } catch (错误315) {
     if (!请求值317) throw 错误315;
@@ -3502,7 +3501,6 @@ async function 处理打开值套接字值(地址319, 端口318, 请求值317 = 
       hostname: 地址319,
       port: 端口318
     });
-    if (套接字314?.opened) await 套接字314.opened;
     return 套接字314;
   }
 }
