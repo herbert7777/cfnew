@@ -1,0 +1,9 @@
+name = "cfnew-canary"
+main = "_worker.js"
+compatibility_date = "2026-01-20"
+workers_dev = true
+keep_vars = true
+
+[[kv_namespaces]]
+binding = "C"
+id = "4102f4a7158f4df3b4fe5a2b986d6dc7"
