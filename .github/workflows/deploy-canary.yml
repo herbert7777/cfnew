@@ -1,0 +1,33 @@
+name: Deploy CFNEW Canary Worker
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-canary:
+    if: github.ref == 'refs/heads/canary-p-primary'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cfnew-canary-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout Canary branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Prepare Worker entrypoint
+        run: cp "明文源吗" "_worker.js"
+
+      - name: Deploy cfnew-canary
+        run: npx --yes wrangler@4.86.0 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
