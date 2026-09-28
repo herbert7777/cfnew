@@ -3103,7 +3103,9 @@ async function 处理网页套接字请求(请求417) {
   let 远程连接值409 = {
     socket: null,
     writer: null,
-    drainUpload: null
+    drainUpload: null,
+    closed: false,
+    socketSettled: false
   };
   let 是否域名系统值 = false;
   let 协议类型 = null;
@@ -3117,15 +3119,17 @@ async function 处理网页套接字请求(请求417) {
     } catch (忽略值406) {}
     远程连接值409.writer = null;
   }
-  function 关闭传输() {
+  function 关闭传输(关闭网页套接字 = true) {
     if (传输值) return;
     传输值 = true;
+    远程连接值409.closed = true;
     值队列.clear();
     处理值远程写入器();
-    try {
-      远程连接值409.socket?.close();
-    } catch (忽略值405) {}
-    关闭套接字值(值值410);
+    const 远程套接字 = 远程连接值409.socket;
+    const 远程套接字已结束 = 远程连接值409.socketSettled;
+    远程连接值409.socket = null;
+    if (远程套接字 && !远程套接字已结束) 安全关闭远程套接字(远程套接字);
+    if (关闭网页套接字) 关闭套接字值(值值410);
   }
   function 处理队列值(块404) {
     const 数据403 = 处理值值8数组(块404);
@@ -3211,6 +3215,14 @@ async function 处理网页套接字请求(请求417) {
         }
         throw new Error('Invalid protocol or authentication failed');
       }
+    },
+    close() {
+      // 客户端已进入正常 WebSocket 关闭流程；这里只释放出站 TCP，
+      // 不再次主动关闭正在握手的 WebSocket。
+      关闭传输(false);
+    },
+    abort() {
+      关闭传输();
     }
   })).catch(错误385 => {
     关闭传输();
@@ -3247,6 +3259,13 @@ async function 处理值值384(地址类型383, 主机, 端口数字, 原始数�
     远程连接值.writer = null;
   }
   function 处理值远程(远程值370, 写入器369, 重试值368) {
+    if (远程连接值.closed) {
+      try {
+        写入器369?.releaseLock();
+      } catch (忽略值367) {}
+      安全关闭远程套接字(远程值370);
+      return;
+    }
     try {
       if (远程连接值.writer && 远程连接值.writer !== 写入器369) {
         远程连接值.writer.releaseLock();
@@ -3254,9 +3273,13 @@ async function 处理值值384(地址类型383, 主机, 端口数字, 原始数�
     } catch (忽略值367) {}
     远程连接值.socket = 远程值370;
     远程连接值.writer = 写入器369;
+    远程连接值.socketSettled = false;
     远程连接值.drainUpload?.();
     远程值370.closed.catch(() => {}).finally(() => {
-      if (远程连接值.socket === 远程值370) 关闭套接字值(网页套接字382);
+      if (远程连接值.socket === 远程值370) {
+        远程连接值.socketSettled = true;
+        关闭套接字值(网页套接字382);
+      }
     });
     连接值279(远程值370, 网页套接字382, 值头部381, 重试值368).finally(() => {
       if (远程连接值.socket === 远程值370) {
@@ -3268,6 +3291,7 @@ async function 处理值值384(地址类型383, 主机, 端口数字, 原始数�
     });
   }
   async function 处理重试连接() {
+    if (远程连接值.closed) return;
     // 只走代理：不回落到直连或备用地址，避免出口 IP 泄漏
     if (仅走代理 && 实际代理已启用) {
       关闭套接字值(网页套接字382);
@@ -8358,6 +8382,12 @@ function 处理基础64值数组(值64字符串) {
       error: 错误116
     };
   }
+}
+function 安全关闭远程套接字(套接字) {
+  try {
+    const 关闭结果 = 套接字?.close?.();
+    if (关闭结果 && typeof 关闭结果.catch === 'function') 关闭结果.catch(() => {});
+  } catch (忽略关闭错误) {}
 }
 function 关闭套接字值(套接字) {
   try {
