@@ -1,6 +1,9 @@
 name: Deploy c31 v3.1
 
 on:
+  push:
+    branches:
+      - c31-v31-deploy
   workflow_dispatch:
 
 permissions:
