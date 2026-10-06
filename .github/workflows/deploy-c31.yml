@@ -1,0 +1,65 @@
+name: Deploy c31 v3.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-c31:
+    if: github.ref == 'refs/heads/c31-v31-deploy'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: c31-v31-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Ensure dedicated KV namespace
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+          list="$(curl -fsS "${auth[@]}" "$api?per_page=100")"
+          id="$(jq -r '.result[]? | select(.title=="c31-kv") | .id' <<<"$list" | head -n1)"
+          if [ -z "$id" ]; then
+            created="$(curl -fsS -X POST "${auth[@]}" --data '{"title":"c31-kv"}' "$api")"
+            id="$(jq -r '.result.id // empty' <<<"$created")"
+          fi
+          test -n "$id"
+          echo "KV_ID=$id" >> "$GITHUB_ENV"
+          echo "Dedicated KV ready"
+
+      - name: Build deploy config
+        shell: bash
+        run: |
+          cat > wrangler.deploy.toml <<EOF2
+          name = "c31"
+          main = "_worker.js"
+          compatibility_date = "2026-01-20"
+          workers_dev = false
+          keep_vars = true
+
+          [[kv_namespaces]]
+          binding = "C"
+          id = "$KV_ID"
+
+          [[routes]]
+          pattern = "c31.vkpower.net"
+          custom_domain = true
+          EOF2
+
+      - name: Deploy c31
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.86.0 deploy --config wrangler.deploy.toml
